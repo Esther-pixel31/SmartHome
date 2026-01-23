@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: smarthome
+      POSTGRES_USER: smarthome
+      POSTGRES_PASSWORD: smarthome
+    ports:
+       - "5433:5432"
+    volumes:
+       - smarthome_db_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    working_dir: /app
+    environment:
+      FLASK_APP: manage.py
+      FLASK_ENV: development
+      DATABASE_URL: postgresql+psycopg2://smarthome:smarthome@db:5432/smarthome
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+
+volumes:
+  smarthome_db_data:
