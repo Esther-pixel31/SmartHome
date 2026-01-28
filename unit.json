@@ -1,0 +1,9 @@
+{
+"property_id": 3,
+"unit_number": "A-101",
+"house_number": "A-101",
+"rent": 35000,
+"deposit": 35000,
+"garbage_fee": 500,
+"water_rate": 300
+}
