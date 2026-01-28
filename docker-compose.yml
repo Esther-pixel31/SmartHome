@@ -14,6 +14,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    user: "${UID}:${GID}"
     working_dir: /app
     environment:
       FLASK_APP: manage.py
