@@ -35,7 +35,9 @@ This system puts everything in one place and keeps records consistent.
 
 Backend
 • Python
+###
 • Flask
+###
 • Flask JWT Extended
 • PostgreSQL
 • SQLAlchemy
