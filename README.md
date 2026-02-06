@@ -1,17 +1,21 @@
-Property Management System
+🏢 Property Management System
 
-###
+📌 What you built
 
-What you built
 You built a web based system for managing rental properties.
+
 It handles real landlord problems like tracking properties, units, and tenants without spreadsheets or paperwork.
 
-Why it exists
+🎯 Why it exists
+
 Landlords lose time and money using manual records.
+
 Missed rent, unclear tenant data, and poor follow up happen fast.
+
 This system puts everything in one place and keeps records consistent.
 
-What users do with it
+🛠️ What users do with it
+
 • Create and manage properties
 • Add units under each property
 • Assign tenants to units
@@ -19,14 +23,16 @@ What users do with it
 • Work with a secure API
 • Scale without changing the data model
 
-What makes it solid
+✨ What makes it solid
+
 • Built around real workflows
 • Clean REST API design
 • Strong separation of concerns
 • Secure authentication
 • Ready for frontend or mobile apps
 
-Tech stack
+🧩 Tech stack
+
 Backend
 • Python
 • Flask
@@ -38,7 +44,8 @@ Infrastructure
 • Docker
 • Docker Compose
 
-Key API features
+🔗 Key API features
+
 • Authentication with JWT
 • Role based access control
 • Property CRUD endpoints
@@ -46,37 +53,39 @@ Key API features
 • Tenant management
 • Protected routes
 
-Ports
+🌐 Ports
+
 • Backend API on port 5000
 • PostgreSQL on port 5432
 
-Project structure
+📁 Project structure
+
 • app holds the core logic
 • models define database tables
 • routes handle API requests
 • utils manage validation and helpers
 • migrations keep the database in sync
 
-How to run it
+▶️ How to run it
+
 • Clone the repository
 • Add environment variables
 • Run docker compose up
 • Open the API on localhost port 5000
 
-Project state
+🚧 Project state
+
 • Core backend complete
 • Auth flow stable
 • Data relationships tested
 • Ready for frontend connection
 
-What comes next
+🔮 What comes next
+
 • Rent and payment tracking
 • Maintenance requests
 • Dashboards and summaries
 • Frontend UI
 • Reports for landlords
 
-Why this project stands out
-You did not build a demo app.
-You built something usable.
-The structure supports growth and real users.
+👩🏽‍💻 Built by
