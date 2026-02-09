@@ -109,6 +109,10 @@ def list_units():
             return jsonify({"error": "property_not_found"}), 404
         query = query.filter(Unit.property_id == prop.id)
 
+    status = str(request.args.get("status", "")).strip().lower()
+    if status in ("vacant", "occupied"):
+        query = query.filter(Unit.status == status)
+
     query = query.order_by(Unit.id.desc())
     items, meta, links = paginate(query)
 
@@ -117,6 +121,7 @@ def list_units():
             "id": u.id,
             "property_id": u.property_id,
             "house_number": u.house_number,
+            "status": u.status,
             "rent": float(u.rent),
             "garbage_fee": float(u.garbage_fee),
             "water_rate": float(u.water_rate),
@@ -126,6 +131,7 @@ def list_units():
         "meta": meta,
         "links": links,
     })
+
 
 
 @bp.route("/<int:unit_id>", methods=["GET"])

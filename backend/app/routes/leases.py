@@ -105,6 +105,9 @@ def create_lease():
     if not u:
         return jsonify({"error": "unit_not_found"}), 404
 
+    if u.status != "vacant":
+        return jsonify({"error": "unit_not_vacant"}), 409
+
     start = parse_date(data["start_date"], "start_date")
     if not start:
         return jsonify({"error": "invalid_date", "field": "start_date"}), 400
@@ -165,6 +168,7 @@ def create_lease():
     )
 
     db.session.add(lease)
+    u.status = "occupied"
     db.session.commit()
     return jsonify({
     "id": lease.id,
@@ -233,6 +237,22 @@ def end_lease(lease_id):
 
     l.end_date = end_d
     l.is_active = False
+
+    u = _unit_in_scope(l.unit_id)
+    if u:
+        still_active = (
+            Lease.query
+            .filter(
+                Lease.unit_id == l.unit_id,
+                Lease.is_active == True,
+                Lease.deleted_at.is_(None),
+                Lease.id != l.id,
+            )
+            .first()
+        )
+    if not still_active:
+        u.status = "vacant"
+
 
     others = (
         Lease.query
@@ -308,6 +328,22 @@ def move_out(lease_id):
     l.is_active = False
     l.end_date = data.get("end_date") and parse_date(data.get("end_date"), "end_date") or date.today()
     l.moved_out_at = datetime.utcnow()
+
+    u = _unit_in_scope(l.unit_id)
+    if u:
+        still_active = (
+            Lease.query
+            .filter(
+                Lease.unit_id == l.unit_id,
+                Lease.is_active == True,
+                Lease.deleted_at.is_(None),
+                Lease.id != l.id,
+            )
+            .first()
+        )
+    if not still_active:
+        u.status = "vacant"
+
 
     db.session.add(settlement)
     db.session.commit()
