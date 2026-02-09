@@ -2,7 +2,9 @@
 
 Built a web based system for managing rental properties. It handles real landlord problems like tracking properties, units, tenants, payments, and Invoices. The system replaces spreadsheets and paperwork with a simple dashboard landlords use daily.
 
-🎯 Why it exists
+######
+
+### 🎯 Why it exists
 
 • Landlords lose time and money using manual records.
 
@@ -27,61 +29,88 @@ Built a web based system for managing rental properties. It handles real landlor
 ✨ What makes it solid
 
 • Built around real workflows
+
 • Clean REST API design
+
 • Strong separation of concerns
+
 • Secure authentication
+
 • Ready for frontend or mobile apps
+
 
 🧩 Tech stack
 
-Backend
+### Backend ###
 • Python
-###
+
 • Flask
-###
+
 • Flask JWT Extended
+
 • PostgreSQL
+
 • SQLAlchemy
 
-Infrastructure
+
+### Infrastructure
+
 • Docker
+
 • Docker Compose
 
-🔗 Key API features
+### 🔗 Key API features ###
 
 • Authentication with JWT
+
 • Role based access control
+
 • Property CRUD endpoints
+
 • Unit CRUD endpoints
+
 • Tenant management
+
 • Protected routes
 
-🌐 Ports
+### 🌐 Ports
 
 • Backend API on port 5000
+
 • PostgreSQL on port 5432
 
-📁 Project structure
+### 📁 Project structure
 
 • app holds the core logic
+
 • models define database tables
+
 • routes handle API requests
+
 • utils manage validation and helpers
+
 • migrations keep the database in sync
 
-▶️ How to run it
+### ▶️ How to run it
 
 • Clone the repository
+
 • Add environment variables
+
 • Run docker compose up
+
 • Open the API on localhost port 5000
 
-🚧 Project state
+### 🚧 Project state
 
 • Core backend complete
+
 • Auth flow stable
+
 • Data relationships tested
+
 • Ready for frontend connection
+
 
 🔮 What comes next
 
