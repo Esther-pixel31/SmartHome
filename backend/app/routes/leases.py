@@ -1,9 +1,9 @@
 from datetime import date, datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
-
+from decimal import Decimal, InvalidOperation
 from ..extensions import db
-from ..models import Lease, Tenant, Unit
+from ..models import Lease, Tenant, Unit,  MoveOutSettlement
 from ..utils.validation import require_fields
 from ..utils.pagination import paginate
 
@@ -29,6 +29,23 @@ def parse_date(value, field):
     except Exception:
         return None
 
+
+def _parse_money(value, field):
+    try:
+        v = Decimal(str(value))
+    except (InvalidOperation, TypeError):
+        return None
+    if v < 0:
+        return None
+    return v
+
+def _settle_deposit(deposit_held: Decimal, kplc: Decimal, damages: Decimal, other: Decimal):
+    total = (kplc or Decimal("0")) + (damages or Decimal("0")) + (other or Decimal("0"))
+    used = min(deposit_held, total)
+    refund = max(deposit_held - total, Decimal("0"))
+    remaining = max(total - deposit_held, Decimal("0"))
+    return total, used, refund, remaining
+ 
 
 def _tenant_in_scope(tenant_id: int):
     company_id, is_admin = _scope()
@@ -72,7 +89,8 @@ def _overlaps(a_start, a_end, b_start, b_end):
 @jwt_required()
 def create_lease():
     data = request.get_json()
-    err = require_fields(data, ["tenant_id", "unit_id", "start_date"])
+    err = require_fields(data, ["tenant_id", "unit_id", "start_date", "deposit_amount"])
+
     if err:
         return err
 
@@ -98,6 +116,10 @@ def create_lease():
             return jsonify({"error": "invalid_date", "field": "end_date"}), 400
         if end < start:
             return jsonify({"error": "end_before_start"}), 400
+
+    deposit_amount = _parse_money(data.get("deposit_amount"), "deposit_amount")
+    if deposit_amount is None or deposit_amount <= 0:
+        return jsonify({"error": "invalid_amount", "field": "deposit_amount"}), 400
 
     company_id, is_admin = _scope()
     user_id = int(get_jwt_identity())
@@ -129,17 +151,27 @@ def create_lease():
         return jsonify({"error": "unit_already_leased", "lease_id": active_exists.id}), 409
 
     lease = Lease(
-        tenant_id=tenant_id,
-        unit_id=unit_id,
-        start_date=start,
-        end_date=end,
-        is_active=True,
-        company_id=u.company_id,
-        created_by_id=user_id,
+    tenant_id=tenant_id,
+    unit_id=unit_id,
+    start_date=start,
+    end_date=end,
+    is_active=True,
+    company_id=u.company_id,
+    created_by_id=user_id,
+    deposit_amount=deposit_amount,
+    deposit_held=deposit_amount,
+    deposit_used=Decimal("0.00"),
+    deposit_refunded=Decimal("0.00"),
     )
+
     db.session.add(lease)
     db.session.commit()
-    return jsonify({"id": lease.id}), 201
+    return jsonify({
+    "id": lease.id,
+    "deposit_amount": float(lease.deposit_amount),
+    "deposit_held": float(lease.deposit_held),
+    }), 201
+
 
 
 @bp.route("", methods=["GET"])
@@ -163,6 +195,12 @@ def list_leases():
             "end_date": l.end_date.isoformat() if l.end_date else None,
             "is_active": l.is_active,
             "deleted_at": l.deleted_at.isoformat() if l.deleted_at else None,
+            "deposit_amount": float(l.deposit_amount or 0),
+            "deposit_held": float(l.deposit_held or 0),
+            "deposit_used": float(l.deposit_used or 0),
+            "deposit_refunded": float(l.deposit_refunded or 0),
+            "moved_out_at": l.moved_out_at.isoformat() if l.moved_out_at else None,
+
         } for l in items],
         "meta": meta,
         "links": links,
@@ -181,6 +219,9 @@ def end_lease(lease_id):
     l = q.first()
     if not l:
         return jsonify({"error": "not_found"}), 404
+    
+    if (l.deposit_held or 0) > 0:
+        return jsonify({"error": "use_move_out_endpoint"}), 409
 
     data = request.get_json() or {}
     end_d = parse_date(data.get("end_date"), "end_date") if data.get("end_date") else date.today()
@@ -213,6 +254,71 @@ def end_lease(lease_id):
 
     db.session.commit()
     return jsonify({"message": "lease ended"}), 200
+
+
+@bp.route("/<int:lease_id>/move-out", methods=["POST"])
+@jwt_required()
+def move_out(lease_id):
+    company_id, is_admin = _scope()
+
+    q = Lease.query.filter(Lease.id == lease_id)
+    if not is_admin:
+        q = q.filter(Lease.company_id == company_id)
+    q = q.filter(Lease.deleted_at.is_(None))
+    l = q.first()
+    if not l:
+        return jsonify({"error": "not_found"}), 404
+
+    if not l.is_active:
+        return jsonify({"error": "lease_not_active"}), 409
+
+    data = request.get_json() or {}
+
+    kplc = _parse_money(data.get("kplc_token_debt", 0), "kplc_token_debt")
+    damages = _parse_money(data.get("damages_cost", 0), "damages_cost")
+    other = _parse_money(data.get("other_deductions", 0), "other_deductions")
+
+    if kplc is None:
+        return jsonify({"error": "invalid_amount", "field": "kplc_token_debt"}), 400
+    if damages is None:
+        return jsonify({"error": "invalid_amount", "field": "damages_cost"}), 400
+    if other is None:
+        return jsonify({"error": "invalid_amount", "field": "other_deductions"}), 400
+
+    notes = data.get("notes")
+
+    deposit_held = Decimal(str(l.deposit_held or 0))
+    total, used, refund, remaining = _settle_deposit(deposit_held, kplc, damages, other)
+
+    settlement = MoveOutSettlement(
+        lease_id=l.id,
+        kplc_token_debt=kplc,
+        damages_cost=damages,
+        other_deductions=other,
+        notes=notes,
+        deposit_used=used,
+        refund_amount=refund,
+        remaining_debt=remaining,
+    )
+
+    l.deposit_used = Decimal(str(l.deposit_used or 0)) + used
+    l.deposit_refunded = Decimal(str(l.deposit_refunded or 0)) + refund
+    l.deposit_held = Decimal("0.00")
+
+    l.is_active = False
+    l.end_date = data.get("end_date") and parse_date(data.get("end_date"), "end_date") or date.today()
+    l.moved_out_at = datetime.utcnow()
+
+    db.session.add(settlement)
+    db.session.commit()
+
+    return jsonify({
+        "lease_id": l.id,
+        "total_deductions": float(total),
+        "deposit_used": float(used),
+        "refund_amount": float(refund),
+        "remaining_debt": float(remaining),
+    }), 200
 
 
 @bp.route("/unit/<int:unit_id>/current", methods=["GET"])
