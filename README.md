@@ -14,7 +14,9 @@ Built a web based system for managing rental properties. It handles real landlor
 
 • This system puts everything in one place and keeps records consistent.
 
-🛠️ What users do with it
+---------------
+
+### 🛠️ What users do with it
 
 • Create and manage properties
 
@@ -28,7 +30,9 @@ Built a web based system for managing rental properties. It handles real landlor
 
 • Scale without changing the data model
 
-✨ What makes it solid
+---------------
+
+### ✨ What makes it solid
 
 • Built around real workflows
 
@@ -40,10 +44,16 @@ Built a web based system for managing rental properties. It handles real landlor
 
 • Ready for frontend or mobile apps
 
+-------------
 
-🧩 Tech stack
+### 🧩 Tech stack
 
-### Backend ###
+-------------
+
+### Backend 
+
+-------------
+
 • Python
 
 • Flask
@@ -54,12 +64,15 @@ Built a web based system for managing rental properties. It handles real landlor
 
 • SQLAlchemy
 
+--------------
 
 ### Infrastructure
 
 • Docker
 
 • Docker Compose
+
+---------------
 
 ### 🔗 Key API features ###
 
@@ -75,11 +88,15 @@ Built a web based system for managing rental properties. It handles real landlor
 
 • Protected routes
 
+-----------------
+
 ### 🌐 Ports
 
 • Backend API on port 5000
 
 • PostgreSQL on port 5432
+
+-----------------
 
 ### 📁 Project structure
 
@@ -93,6 +110,8 @@ Built a web based system for managing rental properties. It handles real landlor
 
 • migrations keep the database in sync
 
+------------------
+
 ### ▶️ How to run it
 
 • Clone the repository
@@ -102,6 +121,8 @@ Built a web based system for managing rental properties. It handles real landlor
 • Run docker compose up
 
 • Open the API on localhost port 5000
+
+-------------------
 
 ### 🚧 Project state
 
@@ -113,14 +134,21 @@ Built a web based system for managing rental properties. It handles real landlor
 
 • Ready for frontend connection
 
+-------------------
 
-🔮 What comes next
+### 🔮 What comes next
 
 • Rent and payment tracking
+
 • Maintenance requests
+
 • Dashboards and summaries
+
 • Frontend UI
+
 • Reports for landlords
 
-👩🏽‍💻 Built by
+-----------------------
+
+### 👩🏽‍💻 Built by Esther Mutua and Powered by coffee
 
