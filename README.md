@@ -1,9 +1,10 @@
 ### 🏢 Property Management System 
-=====
+
+---------------
 
 Built a web based system for managing rental properties. It handles real landlord problems like tracking properties, units, tenants, payments, and Invoices. The system replaces spreadsheets and paperwork with a simple dashboard landlords use daily.
 
-====
+---------------
 
 ### 🎯 Why it exists ###
 
