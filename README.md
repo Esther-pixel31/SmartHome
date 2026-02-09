@@ -2,7 +2,7 @@
 
 ---------------
 
-Built a web based system for managing rental properties. It handles real landlord problems like tracking properties, units, tenants, payments, and Invoices. The system replaces spreadsheets and paperwork with a simple dashboard landlords use daily.
+This project is a web based system designed to help landlords manage rental properties in one place. It focuses on real daily problems landlords face when handling properties manually.The system allows landlords to register properties and units, manage tenant records, track rent payments, and monitor occupancy status. It removes the need for spreadsheets, notebooks, and paper files. A payment tracking feature records rent history per tenant. Landlords see paid, pending, and overdue rent at a glance. This reduces missed payments and follow ups done through phone calls. The notification feature keeps landlords and tenants informed. The system sends alerts for rent due dates, payment updates, and important actions. This improves communication and reduces misunderstandings. The goal of the project is simplicity and reliability. The interface stays clear and easy to use. Every feature supports faster decisions and better record keeping. This system suits small to medium landlords who want control without complex tools.
 
 ---------------
 
