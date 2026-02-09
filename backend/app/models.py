@@ -2,7 +2,7 @@ from .extensions import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, Index, UniqueConstraint, DateTime, Boolean, Date
 from sqlalchemy.orm import relationship, declared_attr
-from datetime import datetime
+from datetime import datetime, date
 
 # ---------- Mixins ----------
 
@@ -95,11 +95,15 @@ class Lease(db.Model, ScopeMixin, AuditMixin, SoftDeleteMixin):
 
     tenant_id = Column(Integer, ForeignKey("tenant.id"), nullable=False, index=True)
     unit_id = Column(Integer, ForeignKey("unit.id"), nullable=False, index=True)
-
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=True)
-
     is_active = Column(Boolean, nullable=False, default=True)
+
+    deposit_amount = Column(Numeric(12, 2), nullable=False, default=0)
+    deposit_held = Column(Numeric(12, 2), nullable=False, default=0)
+    deposit_used = Column(Numeric(12, 2), nullable=False, default=0)
+    deposit_refunded = Column(Numeric(12, 2), nullable=False, default=0)
+    moved_out_at = Column(DateTime, nullable=True)
 
     __table_args__ = (
         Index("ix_lease_is_active", "is_active"),
@@ -115,3 +119,58 @@ class RevokedToken(db.Model):
     user_id = Column(Integer, nullable=False)
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+class Payment(db.Model):
+    __tablename__ = "payments"
+
+    id = Column(Integer, primary_key=True)
+
+    tenant_id = Column(Integer, ForeignKey("tenant.id"), nullable=False, index=True)
+    unit_id = Column(Integer, ForeignKey("unit.id"), nullable=False, index=True)
+
+    amount = Column(Numeric(12, 2), nullable=False)
+    currency = Column(String(8), nullable=False, default="KES")
+    paid_for_month = Column(Date, nullable=False)
+    paid_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    water_paid = Column(Numeric(12, 2), nullable=False, default=0)
+    garbage_paid = Column(Numeric(12, 2), nullable=False, default=0)
+    rent_paid = Column(Numeric(12, 2), nullable=False, default=0)
+    balance_after = Column(Numeric(12, 2), nullable=False, default=0)
+    credit_after = Column(Numeric(12, 2), nullable=False, default=0)
+
+    method = Column(String(32), nullable=True)
+    reference = Column(String(64), nullable=True)
+    note = Column(String(255), nullable=True)
+
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    tenant = relationship("Tenant", backref="payments")
+    unit = relationship("Unit", backref="payments")
+
+    __table_args__ = (
+        Index("ix_payment_tenant", "tenant_id"),
+        Index("ix_payment_unit", "unit_id"),
+        Index("ix_payment_paid_for_month", "paid_for_month"),
+        Index("ix_payment_paid_at", "paid_at"),
+    )
+
+class MoveOutSettlement(db.Model):
+    __tablename__ = "move_out_settlements"
+
+    id = Column(Integer, primary_key=True)
+    lease_id = Column(Integer, ForeignKey("lease.id"), nullable=False, index=True)
+
+    kplc_token_debt = Column(Numeric(12, 2), nullable=False, default=0)
+    damages_cost = Column(Numeric(12, 2), nullable=False, default=0)
+    other_deductions = Column(Numeric(12, 2), nullable=False, default=0)
+
+    notes = Column(String(255), nullable=True)
+
+    deposit_used = Column(Numeric(12, 2), nullable=False, default=0)
+    refund_amount = Column(Numeric(12, 2), nullable=False, default=0)
+    remaining_debt = Column(Numeric(12, 2), nullable=False, default=0)
+
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    lease = relationship("Lease", backref=db.backref("move_out_settlements", lazy=True))
