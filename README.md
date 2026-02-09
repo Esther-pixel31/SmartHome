@@ -1,26 +1,27 @@
 #### 🏢 Property Management System ####
 
-📌 What you built
-
-You built a web based system for managing rental properties.
-
-It handles real landlord problems like tracking properties, units, and tenants without spreadsheets or paperwork.
+Built a web based system for managing rental properties. It handles real landlord problems like tracking properties, units, tenants, payments, and Invoices. The system replaces spreadsheets and paperwork with a simple dashboard landlords use daily.
 
 🎯 Why it exists
 
-Landlords lose time and money using manual records.
+• Landlords lose time and money using manual records.
 
-Missed rent, unclear tenant data, and poor follow up happen fast.
+• Missed rent, unclear tenant data, and poor follow up happen fast.
 
-This system puts everything in one place and keeps records consistent.
+• This system puts everything in one place and keeps records consistent.
 
 🛠️ What users do with it
 
 • Create and manage properties
+
 • Add units under each property
+
 • Assign tenants to units
+
 • Control access using user roles
+
 • Work with a secure API
+
 • Scale without changing the data model
 
 ✨ What makes it solid
