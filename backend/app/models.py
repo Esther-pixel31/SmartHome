@@ -200,3 +200,37 @@ class WaterReading(db.Model):
         db.UniqueConstraint("unit_id", "period", name="uq_water_reading_unit_period"),
         db.Index("ix_water_readings_unit_period", "unit_id", "period"),
     )
+
+class Invoice(db.Model, ScopeMixin, AuditMixin, SoftDeleteMixin):
+    __tablename__ = "invoices"
+
+    id = Column(Integer, primary_key=True)
+
+    lease_id = Column(Integer, ForeignKey("lease.id"), nullable=False, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenant.id"), nullable=False, index=True)
+    unit_id = Column(Integer, ForeignKey("unit.id"), nullable=False, index=True)
+
+    invoice_number = Column(String(40), nullable=False, index=True)
+    status = Column(String(20), nullable=False, default="draft")  # draft, issued, paid, void
+
+    period_start = Column(Date, nullable=False, index=True)
+    period_end = Column(Date, nullable=False, index=True)
+
+    issued_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    due_date = Column(Date, nullable=True, index=True)
+
+    currency = Column(String(8), nullable=False, default="KES")
+    subtotal = Column(Numeric(12, 2), nullable=False, default=0)
+    total = Column(Numeric(12, 2), nullable=False, default=0)
+
+    # Store the preview output for audit. You can switch to JSON type if you use Postgres JSONB.
+    line_items_json = Column(String, nullable=False, default="[]")
+
+    lease = relationship("Lease")
+    tenant = relationship("Tenant")
+    unit = relationship("Unit")
+
+    __table_args__ = (
+        Index("ix_invoice_lease_period", "lease_id", "period_start", "period_end"),
+        Index("ix_invoice_company_number", "company_id", "invoice_number"),
+    )
