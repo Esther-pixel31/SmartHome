@@ -183,31 +183,20 @@ class WaterReading(db.Model):
     __tablename__ = "water_readings"
 
     id = Column(Integer, primary_key=True)
-
     unit_id = Column(Integer, ForeignKey("unit.id"), nullable=False, index=True)
+    company_id = Column(Integer, nullable=False, index=True)
 
-    # Optional, helps with reports, keep nullable
-    tenant_id = Column(Integer, ForeignKey("tenant.id"), nullable=True, index=True)
-
+    period = Column(String(7), nullable=False, index=True)  # YYYY-MM
     reading_value = Column(Numeric(12, 2), nullable=False)
     reading_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
-    prev_reading_value = Column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
-    usage_units = Column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
-
-    rate_per_unit = Column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
-    amount = Column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
-
     note = Column(String(255), nullable=True)
 
+    created_by_id = Column(Integer, ForeignKey("user.id"), nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-
-    unit = relationship("Unit", backref="water_readings")
-    tenant = relationship("Tenant", backref="water_readings")
+    deleted_at = Column(DateTime, nullable=True)
 
     __table_args__ = (
-        Index("ix_water_readings_unit", "unit_id"),
-        Index("ix_water_readings_tenant", "tenant_id"),
-        Index("ix_water_readings_reading_at", "reading_at"),
-        Index("ix_water_readings_unit_reading_at", "unit_id", "reading_at"),
+        db.UniqueConstraint("unit_id", "period", name="uq_water_reading_unit_period"),
+        db.Index("ix_water_readings_unit_period", "unit_id", "period"),
     )
