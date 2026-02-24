@@ -6,6 +6,7 @@ from .routes.units import bp as units_bp
 from .routes.tenants import bp as tenants_bp
 from .routes.leases import bp as leases_bp
 from .routes.payments import bp as payments_bp
+from .routes.invoices import bp as invoices_bp
 from .models import RevokedToken
 from flask_jwt_extended import get_jwt
 from .cli import register_cli
@@ -35,4 +36,5 @@ def create_app():
     app.register_blueprint(tenants_bp)
     app.register_blueprint(leases_bp)
     app.register_blueprint(payments_bp)
+    app.register_blueprint(invoices_bp)
     return app

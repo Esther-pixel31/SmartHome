@@ -23,7 +23,7 @@ def _claims_for_user(u: User) -> dict:
 
 @bp.route("/register", methods=["POST"])
 def register():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}    
     err = require_fields(data, ["email", "password", "company_id"])
     if err:
         return err
@@ -69,7 +69,7 @@ def register():
 
 @bp.route("/login", methods=["POST"])
 def login():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     err = require_fields(data, ["email", "password"])
     if err:
         return err

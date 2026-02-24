@@ -5,6 +5,11 @@ from decimal import Decimal, ROUND_HALF_UP
 import calendar
 import json
 from sqlalchemy import func
+import io
+from flask import send_file
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import mm
 
 from ..extensions import db
 from ..models import Tenant, Lease, Unit, Property, Payment, WaterReading, Invoice
@@ -285,7 +290,18 @@ def _invoice_number(company_id: int) -> str:
 
     return prefix + f"{seq:04d}"
 
-
+def _get_property_for_unit(company_id: int, unit: Unit) -> Property | None:
+    if not unit or not unit.property_id:
+        return None
+    return (
+        db.session.query(Property)
+        .filter(
+            Property.id == unit.property_id,
+            Property.company_id == company_id,
+            Property.deleted_at.is_(None),
+        )
+        .first()
+    )
 
 @bp.route("/preview", methods=["GET"])
 @jwt_required()
@@ -638,6 +654,10 @@ def get_invoice(invoice_id: int):
     tenant = db.session.query(Tenant).filter(Tenant.id == inv.tenant_id).first()
     unit = db.session.query(Unit).filter(Unit.id == inv.unit_id).first()
 
+    prop = None
+    if unit:
+        prop = _get_property_for_unit(company_id, unit)
+
     try:
         line_items = json.loads(inv.line_items_json or "[]")
     except Exception:
@@ -653,7 +673,159 @@ def get_invoice(invoice_id: int):
         "period": {"start": inv.period_start.isoformat(), "end": inv.period_end.isoformat()},
         "tenant": _to_public_tenant(tenant) if tenant else None,
         "unit": _to_public_unit(unit) if unit else None,
+
+        # ✅ property name join (as per your template)
+        "property_name": prop.name if prop else None,
+
         "lease": _to_public_lease(lease) if lease else None,
         "line_items": line_items,
         "totals": {"subtotal": _money(inv.subtotal), "total": _money(inv.total), "currency": inv.currency},
     }), 200
+
+@bp.route("/<int:invoice_id>/pdf", methods=["GET"])
+@jwt_required()
+def download_invoice_pdf(invoice_id: int):
+    claims = get_jwt()
+    company_id = claims.get("company_id")
+    if not company_id:
+        return jsonify({"error": "missing_company_scope"}), 401
+
+    inv = (
+        db.session.query(Invoice)
+        .filter(
+            Invoice.id == invoice_id,
+            Invoice.company_id == company_id,
+            Invoice.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if inv is None:
+        return jsonify({"error": "invoice_not_found"}), 404
+
+    lease = db.session.query(Lease).filter(Lease.id == inv.lease_id).first()
+    tenant = db.session.query(Tenant).filter(Tenant.id == inv.tenant_id).first()
+    unit = db.session.query(Unit).filter(Unit.id == inv.unit_id).first()
+
+    prop = None
+    if unit:
+        prop = _get_property_for_unit(company_id, unit)
+
+    try:
+        line_items = json.loads(inv.line_items_json or "[]")
+    except Exception:
+        line_items = []
+
+    def _find_item(code: str):
+        code = str(code or "").upper()
+        for li in line_items:
+            if str(li.get("code") or "").upper() == code:
+                return li
+        return None
+
+    rent_item = _find_item("RENT")
+    garbage_item = _find_item("GARBAGE")
+    water_item = _find_item("WATER")
+    balance_item = _find_item("BALANCE")
+    credit_item = _find_item("CREDIT")
+
+    rent_amt = (rent_item or {}).get("amount", "0.00")
+    garbage_amt = (garbage_item or {}).get("amount", "0.00")
+
+    # Water section values (from meta)
+    cur_read = prev_read = rate = usage_units = water_amount = "0.00"
+    if water_item:
+        meta = water_item.get("meta") or {}
+        cur_read = meta.get("current_reading", "0.00")
+        prev_read = meta.get("prev_reading", "0.00")
+        rate = meta.get("rate", "0.00")
+        usage_units = meta.get("usage_units", water_item.get("qty", "0.00"))
+        water_amount = water_item.get("amount", "0.00")
+
+    # BALANCE BFWD/CFWD display (prefer BALANCE, else CREDIT)
+    balance_display = (balance_item or {}).get("amount", "0.00")
+    if balance_display in ("0.00", "0", "0.0") and credit_item:
+        balance_display = credit_item.get("amount", "0.00")
+
+    invoice_no = inv.invoice_number
+    invoice_date = (inv.issued_at.date() if inv.issued_at else date.today()).strftime("%d.%m.%Y")
+    tenant_name = tenant.full_name if tenant else "-"
+    unit_no = unit.house_number if unit else "-"
+    property_name = prop.name if prop else "-"
+
+    total_amount = f"{_money(inv.total)}"
+
+    # --- PDF render (A4) ---
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    width, height = A4
+
+    def txt(x_mm, y_mm, s, size=11, bold=False):
+        x = x_mm * mm
+        y = height - (y_mm * mm)
+        c.setFont("Helvetica-Bold" if bold else "Helvetica", size)
+        c.drawString(x, y, str(s))
+
+    # Header
+    txt(15, 20, "INVOICE", size=24, bold=True)
+    txt(15, 30, "NYUMBANI SYSTEMS", size=13, bold=True)
+
+    # Top info
+    txt(15, 45, "TENANT NAME:", size=9, bold=True)
+    txt(55, 45, tenant_name, size=10)
+
+    txt(120, 45, "INVOICE NO.", size=9, bold=True)
+    txt(155, 45, invoice_no, size=10)
+
+    txt(120, 52, "INVOICE DATE:", size=9, bold=True)
+    txt(155, 52, invoice_date, size=10)
+
+    txt(15, 60, "UNIT NO:", size=9, bold=True)
+    txt(55, 60, unit_no, size=10)
+
+    txt(120, 60, "PROPERTY NAME:", size=9, bold=True)
+    txt(155, 60, property_name, size=10)
+
+    # Charges
+    txt(15, 75, "RENT:", size=11, bold=True)
+    txt(55, 75, f"{rent_amt} Kshs", size=11)
+
+    txt(15, 83, "GARBAGE:", size=11, bold=True)
+    txt(55, 83, f"{garbage_amt} Kshs", size=11)
+
+    # Water readings block (same labels as your template)
+    txt(15, 95, "WATER READINGS", size=11, bold=True)
+
+    txt(15, 105, "CURRENT READING:", size=9, bold=True)
+    txt(65, 105, f"{cur_read} Units", size=10)
+
+    txt(15, 112, "PREVIOUS READING:", size=9, bold=True)
+    txt(65, 112, f"{prev_read} Units", size=10)
+
+    txt(15, 119, "WATER RATE:", size=9, bold=True)
+    txt(65, 119, f"{rate} Kshs", size=10)
+
+    txt(15, 126, "UNIT CONSUMPTION", size=9, bold=True)
+    txt(65, 126, f"{usage_units} Units", size=10)
+
+    txt(15, 138, "WATER RATE: X UNIT CONSUMPTION", size=9, bold=True)
+    txt(85, 138, f"{water_amount} Kshs", size=10)
+
+    # Balance + Total
+    txt(15, 155, "BALANCE BFWD/CFWD:", size=11, bold=True)
+    txt(75, 155, f"{balance_display} Kshs", size=11)
+
+    txt(15, 165, "TOTAL AMOUNT:", size=12, bold=True)
+    txt(75, 165, f"{total_amount} Kshs", size=12)
+
+    txt(15, 185, "Thank you !!!", size=12, bold=True)
+
+    c.showPage()
+    c.save()
+
+    buf.seek(0)
+    return send_file(
+        buf,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"{invoice_no}.pdf",
+    )
